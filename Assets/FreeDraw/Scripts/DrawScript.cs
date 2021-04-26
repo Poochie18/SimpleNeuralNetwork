@@ -1,13 +1,24 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Drawing;
+using System;
+using Color = UnityEngine.Color;
 
 public class DrawScript : MonoBehaviour
 {
+    public static event Action<double[]> Inputs; 
+
+    private int width = 28;
+    private int height = 28;
+    private int scale = 16;
+
+    private double[] inputs;
+
     private Color penColour = Color.white;
     private Color resetColour = Color.black;
 
-    public int penWidth = 3;
+    public int penWidth = 16;
 
     public LayerMask drawingLayers;
 
@@ -26,14 +37,24 @@ public class DrawScript : MonoBehaviour
     {
         drawSprite = this.GetComponent<SpriteRenderer>().sprite;
         drawTexture = drawSprite.texture;
-
         if (resetOnPlay)
             ResetCanvas();
+    }
+
+    private void SetUpNN(int x, int y)
+    {
+        int miniX = Mathf.RoundToInt(x / 16);
+        int miniY = Mathf.RoundToInt((448 - y) / 16);
+        Debug.Log($"{miniX} {miniY}");
+        inputs[miniX + miniY * 28] = 1f;
+        Inputs(inputs);
     }
 
     public void PenBrush(Vector2 WorldPos)
     {
         Vector2 pixelPos = WorldToPixelCoordinates(WorldPos);
+
+        
         currentColors = drawTexture.GetPixels32();
 
         if (previousPosition == Vector2.zero)
@@ -46,6 +67,7 @@ public class DrawScript : MonoBehaviour
         }
         ApplyMarkedPixelChanges();
         previousPosition = pixelPos;
+        SetUpNN((int)pixelPos.x, (int)pixelPos.y);
     }
     void Update()
     {
@@ -113,12 +135,17 @@ public class DrawScript : MonoBehaviour
 
         if (arrayPosition > currentColors.Length || arrayPosition < 0)
             return;
-
+        
         currentColors[arrayPosition] = color;
+        
+        
     }
     public void ApplyMarkedPixelChanges()
     {
+        System.Drawing.Color[] col = new System.Drawing.Color[784];
+        //Debug.Log(col[1].ToArgb());
         drawTexture.SetPixels32(currentColors);
+        //Debug.Log(currentColors[1]);
         drawTexture.Apply();
     }
 
@@ -132,16 +159,21 @@ public class DrawScript : MonoBehaviour
 
         float unitsToPixels = pixelWidth / drawSprite.bounds.size.x * transform.localScale.x;
 
-        float centered_x = local_pos.x * unitsToPixels + pixelWidth / 2;
-        float centered_y = local_pos.y * unitsToPixels + pixelHeight / 2;
+        float centered_y = local_pos.y * unitsToPixels + pixelWidth / 2;
+        float centered_x = local_pos.x * unitsToPixels + pixelHeight / 2;
 
         Vector2 pixel_pos = new Vector2(Mathf.RoundToInt(centered_x), Mathf.RoundToInt(centered_y));
-
+        //Debug.Log($"{Mathf.RoundToInt(pixel_pos.x / 16)}  {Mathf.RoundToInt((448-pixel_pos.y) / 16)}");
         return pixel_pos;
     }
 
     public void ResetCanvas()
     {
+        inputs = new double[784];
+        for (int i = 0; i < inputs.Length; i++)
+        {
+            inputs[i] = 0f;
+        }
         cleanColours = new Color[(int)drawSprite.rect.width * (int)drawSprite.rect.height];
         for (int i = 0; i < cleanColours.Length; i++)
             cleanColours[i] = resetColour;

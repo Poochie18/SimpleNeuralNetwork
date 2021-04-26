@@ -1,120 +1,70 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Drawing;
 
 public class Draw : MonoBehaviour
 {
-    public LayerMask drawLayer;
-    private Sprite drawSprite;
-    private Texture2D drawTexture;
-    Color[] cleanColor;
-    Color32[] curColor;
-    public bool Reset_Canvas_On_Play = true;
-    public Color Reset_Colour = new Color(1, 1, 1, 0);
-    public int brushRadius;
+    private int width = 28;
+    private int height = 28;
+    private int scale = 16;
 
-    Vector2 previous_drag_position;
+    private bool mousePressed = false;
+    private int mx = 0;
+    private int my = 0;
+
+    private double[,] colors;
+    double[] inputs;
+
+    private Bitmap img;
+    private Bitmap miniImg;
+
+    private NeuralNetwork nn;
 
     private void Start()
     {
-        drawSprite = this.GetComponent<SpriteRenderer>().sprite;
-        drawTexture = drawSprite.texture;
-
-        if (Reset_Canvas_On_Play)
-            ResetCanvas();
+        colors = new double[width, height];
+        img = new Bitmap(@"F:/Repository/SimpleNeuralNetwork/Assets/Resources/sprt.png");
+        miniImg = new Bitmap(width, height);
+        inputs = new double[width * height];
     }
 
-    public void ResetCanvas()
+    private void Update()
     {
-        cleanColor = new Color[(int)drawSprite.rect.width * (int)drawSprite.rect.height];
-        for (int x = 0; x < cleanColor.Length; x++)
-            cleanColor[x] = Reset_Colour;
-        drawTexture.SetPixels(cleanColor);
-        drawTexture.Apply();
-    }
-
-    void Update()
-    {
-        if (Input.GetMouseButton(0))
+        mousePressed = Input.GetMouseButton(0);
+        if (mousePressed)
         {
-            Vector2 mousePosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            Collider2D hit = Physics2D.OverlapPoint(mousePosition, drawLayer.value);
-            if(hit != null)
-            {
-                
-                Vector2 pixelPos = WorldToPixelCoordinates(mousePosition);
-                curColor = drawTexture.GetPixels32();
-                Debug.Log(curColor.Length);
-                if (previous_drag_position == Vector2.zero)
-                    MarkPixels(pixelPos);
-                else
-                    ColourBetween(previous_drag_position, pixelPos);
-                previous_drag_position = pixelPos;
-                //Debug.Log(curColor.Length);
-            }
-            else if (!Input.GetMouseButton(0))
-            {
-                previous_drag_position = Vector2.zero;
-            }
+            Vector2 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+            //
+            var coordinates = WorldToPixelCoordinates(mouseWorldPos);
+            Debug.Log($"{(int)coordinates.x},{(int)coordinates.y}");
+           
+            
+            img.SetPixel((int)coordinates.x, (int)coordinates.y, System.Drawing.Color.Red);
+            Debug.Log(img.GetPixel((int)coordinates.x, (int)coordinates.y));
         }
     }
 
-    public void ColourBetween(Vector2 start_point, Vector2 end_point)
+    public Vector2 WorldToPixelCoordinates(Vector2 worldPosition)
     {
-        float distance = Vector2.Distance(start_point, end_point);
+        Vector2 local_pos = transform.InverseTransformPoint(worldPosition);
 
-        Vector2 cur_position = start_point;
+        float pixelWidth = img.Width;
+        float pixelHeight = img.Height;
 
-        float lerp_steps = 1 / distance;
-        Debug.Log(lerp_steps);
-        for (float lerp = 0; lerp <= 1; lerp += lerp_steps)
-        {
-            cur_position = Vector2.Lerp(start_point, end_point, lerp);
-            MarkPixels(cur_position);
-        }
-    }
-
-    public Vector2 WorldToPixelCoordinates(Vector2 world_position)
-    {
-        Vector2 local_pos = transform.InverseTransformPoint(world_position);
-
-        float pixelWidth = drawSprite.rect.width;
-        float pixelHeight = drawSprite.rect.height;
-
-        float unitsToPixels = pixelWidth / drawSprite.bounds.size.x * transform.localScale.x;
+        float unitsToPixels = pixelWidth / (pixelWidth / 100f) * transform.localScale.x;
 
         float centered_x = local_pos.x * unitsToPixels + pixelWidth / 2;
         float centered_y = local_pos.y * unitsToPixels + pixelHeight / 2;
 
         Vector2 pixel_pos = new Vector2(Mathf.RoundToInt(centered_x), Mathf.RoundToInt(centered_y));
-
+        //Debug.Log(pixel_pos);
         return pixel_pos;
     }
 
-    public void MarkPixels(Vector2 position)
+    public void Paint()
     {
         
-        int center_x = (int)position.x;
-        int center_y = (int)position.y;
-
-        for (int x = center_x - brushRadius; x <= center_x + brushRadius; x++)
-        {
-            for (int y = center_y - brushRadius; y <= center_y + brushRadius; y++)
-            {
-                MarkPixelToChange(x, y);
-            }
-        }
-
         
-    }
-
-    public void MarkPixelToChange(int x,int y)
-    {
-        //Debug.Log($"{position.x}:{position.y}");
-        int array_pos = y * (int)drawSprite.rect.width + x;
-        //Debug.Log(array_pos);
-        curColor[array_pos] = new Color(0f, 0f, 0f, 0f);
-        drawTexture.SetPixels32(curColor);
-        drawTexture.Apply();
     }
 }

@@ -1,10 +1,12 @@
 ﻿using System.Collections;
 using System;
+using System.Runtime.Serialization.Formatters.Binary;
+using System.IO;
 using System.Collections.Generic;
 using UnityEngine;
 using Random = System.Random;
 
-public class NeuralNetwork : MonoBehaviour
+public class NeuralNetwork
 {
     private double learningRate;
     private Layer[] layers;
@@ -27,7 +29,11 @@ public class NeuralNetwork : MonoBehaviour
                 }
             }
         }
+    }
 
+    public NeuralNetwork()
+    {
+        LoadGame();
     }
 
     public double[] FeedForward(double[] inputs)
@@ -116,6 +122,85 @@ public class NeuralNetwork : MonoBehaviour
                 l1.biases[i] += gradients[i];
             }
         }
+    }
+
+
+
+    public void SaveGame()
+    {
+        BinaryFormatter bf = new BinaryFormatter();
+        FileStream file = File.Create(Application.persistentDataPath + "/SavedData.dat");
+        SaveData[] data = new SaveData[layers.Length];
+
+        for (int i = 0; i < data.Length; i++)
+        {
+            int nextSize = 0;
+            if (i < layers.Length - 1) nextSize = layers[i + 1].size;
+            data[i] = new SaveData(layers[i].size, nextSize);
+            for (int j = 0; j < layers[i].size; j++)
+            {
+                data[i].biases[j] = layers[i].biases[j];
+                for (int k = 0; k < nextSize; k++)
+                {
+                    data[i].weights[j, k] = layers[i].weights[j, k];
+                }
+            }
+        }
+        Print(layers[1].biases);
+        bf.Serialize(file, data);
+        file.Close();
+        Debug.Log("Game Saved");
+    }
+
+    void Print(double[] b)
+    {
+        for(int i = 0; i < b.Length; i++)
+        {
+            Debug.Log(b[i]);
+        }
+    }
+
+    public void LoadGame()
+    {
+        if(File.Exists(Application.persistentDataPath + "/SavedData.dat"))
+        {
+            BinaryFormatter bf = new BinaryFormatter();
+            FileStream file = File.Open(Application.persistentDataPath + "/SavedData.dat", FileMode.Open);
+            SaveData[] data = (SaveData[])bf.Deserialize(file);
+            file.Close();
+
+            layers = new Layer[data.Length];
+            for (int i = 0; i < layers.Length; i++)
+            {
+                int nextSize = 0;
+                if (i < data.Length - 1) nextSize = data[i + 1].size;
+                layers[i] = new Layer(data[i].size, nextSize);
+                for (int j = 0; j < data[i].size; j++)
+                {
+                    layers[i].biases[j] = data[i].biases[j];
+                    for (int k = 0; k < nextSize; k++)
+                    {
+                        layers[i].weights[j, k] = data[i].weights[j, k];
+                    }
+                }
+            }
+            Print(layers[1].biases);
+            Debug.Log("Game Loaded");
+        }
+    }
+}
+
+[Serializable]
+public class SaveData
+{
+    public double[] biases;
+    public double[,] weights;
+    public int size;
+    public SaveData(int size, int nextSize)
+    {
+        this.size = size;
+        biases = new double[size];
+        weights = new double[size, nextSize];
     }
 }
 
