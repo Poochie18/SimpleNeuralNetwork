@@ -9,8 +9,10 @@ using Random = System.Random;
 public class NeuralNetwork
 {
     private double learningRate;
-    private Layer[] layers;
+    private Layer[] layers; // Number of layers
     private Random rnd = new Random();
+
+    //Constructor for the first training
     public NeuralNetwork(double learningRate, params int[] sizes)
     {
         this.learningRate = learningRate;
@@ -31,11 +33,13 @@ public class NeuralNetwork
         }
     }
 
+    //Constructor for a trained neural network
     public NeuralNetwork()
     {
         LoadGame();
     }
 
+    //Getting output values
     public double[] FeedForward(double[] inputs)
     {
 
@@ -61,6 +65,7 @@ public class NeuralNetwork
         return layers[layers.Length - 1].neurons;
     }
 
+
     private double Sigmoid(double x)
     {
         return 1 / (1 + Mathf.Exp(-(float)x));
@@ -71,6 +76,7 @@ public class NeuralNetwork
         return x * (1 - x);
     }
 
+    //Backpropagation method to increase accuracy and reduce guessing error
     public void BackPropagation(double[] targets)
     {
         double[] errors = new double[layers[layers.Length - 1].size];
@@ -129,7 +135,7 @@ public class NeuralNetwork
     public void SaveGame()
     {
         BinaryFormatter bf = new BinaryFormatter();
-        FileStream file = File.Create(Application.persistentDataPath + "/SavedData.dat");
+        FileStream file = File.Create(Application.dataPath + "/StreamingAssets/SavedData2.dat");
         SaveData[] data = new SaveData[layers.Length];
 
         for (int i = 0; i < data.Length; i++)
@@ -146,40 +152,24 @@ public class NeuralNetwork
                 }
             }
         }
-        //Print(layers[1].biases);
         bf.Serialize(file, data);
         file.Close();
         Debug.Log("Game Saved");
     }
 
-    void Print(double[] b)
+    private void LoadGame()
     {
-        for(int i = 0; i < b.Length; i++)
-        {
-            Debug.Log(b[i]);
-        }
-    }
+        string fileName = "SavedData.dat";
 
-    public void LoadGame()
-    {
-        /*if (PlayerPrefs.GetInt("FIRSTTIMEOPENING", 1) == 1)
-        {
-            Debug.Log("First Time Opening");
+        if (!File.Exists(Application.persistentDataPath + "/" + fileName)) UnpackMobileFile(fileName);
 
-            PlayerPrefs.SetInt("FIRSTTIMEOPENING", 1);
 
-            TextAsset xmlAsset = Resources.Load("/SavedData.dat") as TextAsset;
-            string xmlContent = xmlAsset.text;
-            System.IO.File.WriteAllText(Application.persistentDataPath + "/SavedData.dat", xmlContent);
-
-        }*/
-
-        if (File.Exists(Application.persistentDataPath + "/SavedData.dat"))
+        if (File.Exists(Application.persistentDataPath + "/" + fileName))
         {
             BinaryFormatter bf = new BinaryFormatter();
-            FileStream file = File.Open(Application.persistentDataPath + "/SavedData.dat", FileMode.Open);
-            SaveData[] data = (SaveData[])bf.Deserialize(file);
-            file.Close();
+            FileStream fileOpen = File.Open(Application.persistentDataPath + "/" + fileName, FileMode.Open);
+            SaveData[] data = (SaveData[])bf.Deserialize(fileOpen);
+            fileOpen.Close();
 
             layers = new Layer[data.Length];
             for (int i = 0; i < layers.Length; i++)
@@ -196,8 +186,40 @@ public class NeuralNetwork
                     }
                 }
             }
-            //Print(layers[1].biases);
             Debug.Log("Game Loaded");
+        }
+    }
+    private void UnpackMobileFile(string fileName)
+    {  
+        string destinationPath = Path.Combine(Application.persistentDataPath, fileName);
+        string sourcePath = Path.Combine(Application.streamingAssetsPath, fileName);
+
+        if (!File.Exists(destinationPath) || (File.GetLastWriteTimeUtc(sourcePath) > File.GetLastWriteTimeUtc(destinationPath)))
+        {
+            if (sourcePath.Contains("://"))
+            {
+                WWW www = new WWW(sourcePath);
+                while (!www.isDone) {; }
+                if (String.IsNullOrEmpty(www.error))
+                {
+                    File.WriteAllBytes(destinationPath, www.bytes);
+                }
+                else
+                {
+                    Debug.Log("ERROR: the file DB named " + fileName + " doesn't exist in the StreamingAssets Folder, please copy it there.");
+                }
+            }
+            else
+            { 
+                if (File.Exists(sourcePath))
+                {
+                    File.Copy(sourcePath, destinationPath, true);
+                }
+                else
+                {
+                    Debug.Log("ERROR: the file DB named " + fileName + " doesn't exist in the StreamingAssets Folder, please copy it there.");
+                }
+            }
         }
     }
 }

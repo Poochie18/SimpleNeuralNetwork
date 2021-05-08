@@ -1,7 +1,5 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-using System.Drawing;
+﻿using UnityEngine;
+using UnityEngine.UI;
 using System;
 using Color = UnityEngine.Color;
 
@@ -9,8 +7,7 @@ public class DrawScript : MonoBehaviour
 {
     public static event Action<double[]> Inputs; 
 
-    private int width = 28;
-    private int height = 28;
+    private int imageSize = 28;
     private int scale = 16;
 
     private double[] inputs;
@@ -18,11 +15,15 @@ public class DrawScript : MonoBehaviour
     private Color penColour = Color.white;
     private Color resetColour = Color.black;
 
-    public int penWidth = 16;
+    [SerializeField] private int penWidth = 16;
 
-    public LayerMask drawingLayers;
+    [SerializeField] private LayerMask drawingLayers;
 
-    public bool resetOnPlay = true;
+    [SerializeField] private bool resetOnPlay = true;
+
+    [SerializeField] private Slider slider;
+
+    [SerializeField] private Text sliderValue;
 
     private Sprite drawSprite;
     private Texture2D drawTexture;
@@ -30,27 +31,49 @@ public class DrawScript : MonoBehaviour
     private Vector2 previousPosition;
     private Color[] cleanColours;
     private Color32[] currentColors;
-    bool mouseWasHeldOut = false;
-    bool NoDraw = false;
 
-    void Awake()
+    private bool mouseWasHeldOut = false;
+    private bool NoDraw = false;
+
+    private void Awake()
     {
-        drawSprite = this.GetComponent<SpriteRenderer>().sprite;
+        drawSprite = GetComponent<SpriteRenderer>().sprite;
         drawTexture = drawSprite.texture;
+        SetSliderValues();
         if (resetOnPlay)
             ResetCanvas();
     }
 
+    private void SetSliderValues()
+    {
+        if(PlayerPrefs.GetInt("FirstOpen", 1) == 1)
+        {
+            PlayerPrefs.SetInt("FirstOpen", 0);
+
+            slider.value = 6;
+            penWidth = 6;
+            PlayerPrefs.SetInt("Slider", penWidth);
+            sliderValue.text = string.Join("", penWidth);
+        }
+        else
+        {
+            slider.value = PlayerPrefs.GetInt("Slider");
+            penWidth = PlayerPrefs.GetInt("Slider");
+
+            sliderValue.text = string.Join("", penWidth);
+        }
+        
+    }
+
     private void SetUpNN(int x, int y)
     {
-        int miniX = Mathf.RoundToInt(x / 16);
-        int miniY = Mathf.RoundToInt((448 - y) / 16);
-        Debug.Log($"{miniX} {miniY}");
-        inputs[miniX + miniY * 28] = 1f;
+        int miniX = Mathf.RoundToInt(x / scale);
+        int miniY = Mathf.RoundToInt((448 - y) / scale);
+        inputs[miniX + miniY * imageSize] = 1f;
         Inputs(inputs);
     }
 
-    public void PenBrush(Vector2 WorldPos)
+    private void PenBrush(Vector2 WorldPos)
     {
         Vector2 pixelPos = WorldToPixelCoordinates(WorldPos);
 
@@ -69,7 +92,7 @@ public class DrawScript : MonoBehaviour
         previousPosition = pixelPos;
         SetUpNN((int)pixelPos.x, (int)pixelPos.y);
     }
-    void Update()
+    private void Update()
     {
         bool mouseDown = Input.GetMouseButton(0);
         if (mouseDown && !NoDraw)
@@ -98,7 +121,7 @@ public class DrawScript : MonoBehaviour
         mouseWasHeldOut = mouseDown;
     }
 
-    public void ColourBetween(Vector2 startPoint, Vector2 endPoint, int width, Color color)
+    private void ColourBetween(Vector2 startPoint, Vector2 endPoint, int width, Color color)
     {
         float distance = Vector2.Distance(startPoint, endPoint);
 
@@ -113,7 +136,7 @@ public class DrawScript : MonoBehaviour
         }
     }
 
-    public void MarkPixelsToColour(Vector2 pixelCenter, int thickness, Color color)
+    private void MarkPixelsToColour(Vector2 pixelCenter, int thickness, Color color)
     {
         int center_x = (int)pixelCenter.x;
         int center_y = (int)pixelCenter.y;
@@ -129,7 +152,7 @@ public class DrawScript : MonoBehaviour
             }
         }
     }
-    public void MarkPixelToChange(int x, int y, Color color)
+    private void MarkPixelToChange(int x, int y, Color color)
     {
         int arrayPosition = y * (int)drawSprite.rect.width + x;
 
@@ -140,17 +163,14 @@ public class DrawScript : MonoBehaviour
         
         
     }
-    public void ApplyMarkedPixelChanges()
+    private void ApplyMarkedPixelChanges()
     {
-        System.Drawing.Color[] col = new System.Drawing.Color[784];
-        //Debug.Log(col[1].ToArgb());
         drawTexture.SetPixels32(currentColors);
-        //Debug.Log(currentColors[1]);
         drawTexture.Apply();
     }
 
 
-    public Vector2 WorldToPixelCoordinates(Vector2 worldPosition)
+    private Vector2 WorldToPixelCoordinates(Vector2 worldPosition)
     {
         Vector2 local_pos = transform.InverseTransformPoint(worldPosition);
 
@@ -163,13 +183,12 @@ public class DrawScript : MonoBehaviour
         float centered_x = local_pos.x * unitsToPixels + pixelHeight / 2;
 
         Vector2 pixel_pos = new Vector2(Mathf.RoundToInt(centered_x), Mathf.RoundToInt(centered_y));
-        //Debug.Log($"{Mathf.RoundToInt(pixel_pos.x / 16)}  {Mathf.RoundToInt((448-pixel_pos.y) / 16)}");
         return pixel_pos;
     }
 
-    public void ResetCanvas()
+    private void ResetCanvas()
     {
-        inputs = new double[784];
+        inputs = new double[imageSize * imageSize];
         for (int i = 0; i < inputs.Length; i++)
         {
             inputs[i] = 0f;
@@ -180,6 +199,13 @@ public class DrawScript : MonoBehaviour
 
         drawTexture.SetPixels(cleanColours);
         drawTexture.Apply();
+    }
+
+    public void SlideringPedWidth()
+    {
+        penWidth = (int)slider.value;
+        sliderValue.text = string.Join("", (int)slider.value);
+        PlayerPrefs.SetInt("Slider", penWidth);
     }
 
 }
