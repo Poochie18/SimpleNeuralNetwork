@@ -76,7 +76,7 @@ public class NeuralNetwork
         double[] errors = new double[layers[layers.Length - 1].size];
         for (int i = 0; i < layers[layers.Length - 1].size; i++)
         {
-            errors[i] = targets[i] - layers[layers.Length - 1].neurons[i];
+            errors[i] = (targets[i]-layers[layers.Length - 1].neurons[i]);
         }
         for (int k = layers.Length - 2; k >= 0; k--)
         {
@@ -146,7 +146,7 @@ public class NeuralNetwork
                 }
             }
         }
-        Print(layers[1].biases);
+        //Print(layers[1].biases);
         bf.Serialize(file, data);
         file.Close();
         Debug.Log("Game Saved");
@@ -162,7 +162,19 @@ public class NeuralNetwork
 
     public void LoadGame()
     {
-        if(File.Exists(Application.persistentDataPath + "/SavedData.dat"))
+        /*if (PlayerPrefs.GetInt("FIRSTTIMEOPENING", 1) == 1)
+        {
+            Debug.Log("First Time Opening");
+
+            PlayerPrefs.SetInt("FIRSTTIMEOPENING", 1);
+
+            TextAsset xmlAsset = Resources.Load("/SavedData.dat") as TextAsset;
+            string xmlContent = xmlAsset.text;
+            System.IO.File.WriteAllText(Application.persistentDataPath + "/SavedData.dat", xmlContent);
+
+        }*/
+
+        if (File.Exists(Application.persistentDataPath + "/SavedData.dat"))
         {
             BinaryFormatter bf = new BinaryFormatter();
             FileStream file = File.Open(Application.persistentDataPath + "/SavedData.dat", FileMode.Open);
@@ -184,7 +196,7 @@ public class NeuralNetwork
                     }
                 }
             }
-            Print(layers[1].biases);
+            //Print(layers[1].biases);
             Debug.Log("Game Loaded");
         }
     }

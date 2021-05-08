@@ -4,19 +4,51 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Drawing;
 using System.IO;
+using UnityEngine.UI;
 using Color = System.Drawing.Color;
 using Random = System.Random;
 
 public class MainScript : MonoBehaviour
 {
     NeuralNetwork nn;
+    public Text numbersWeight;
+    public Text number;
     private void Start()
     {
         DrawScript.Inputs += TeachNN;
-        nn = new NeuralNetwork();
-        //Digits();
+        //nn = new NeuralNetwork();
+        Digits();
+        Test();
+
+
+    }
+    
+    void Test()
+    {
+        string[] files;
+        int sample = 5000;
+        string path = @"F:/Download/test";
+        files = Directory.GetFiles(path, "*.png");
+        int right = 0;
+        for (int i = 0; i < sample; i++)
+        {
+            int imgIndex = i;
+            int number = GetTestNumber(imgIndex, files);
+            double[] outputs = nn.FeedForward(GetImage(imgIndex, files));
+            int num = WhichNumber(outputs);
+            if (number == num)
+            {
+                right++;
+            }
+        }
+        Debug.Log(right);
     }
 
+    private int GetTestNumber(int index, string[] files)
+    {
+        int number = Convert.ToInt32(files[index].Substring(27, 1));
+        return number;
+    }
 
     private void Print(double[] inputs)
     {
@@ -28,7 +60,7 @@ public class MainScript : MonoBehaviour
                 Debug.Log(String.Format("{0,4}", Math.Round(inputs[j + i * 28], 2)));
             }
 
-            Debug.Log("");
+            Debug.Log("\n");
         }
         Debug.Log("");
     }
@@ -38,13 +70,13 @@ public class MainScript : MonoBehaviour
         string[] files;
         Random rnd = new Random();
         
-        nn = new NeuralNetwork(0.001f, 784, 48, 32, 10);
+        nn = new NeuralNetwork(0.01f, 784,256,32, 10);
 
         int sample = 60000;
         string path = @"F:/Download/train";
         files = Directory.GetFiles(path, "*.png");
 
-        int epochs = 500;
+        int epochs = 800;
         for (int i = 1; i < epochs; i++)
         {
             int right = 0;
@@ -53,7 +85,8 @@ public class MainScript : MonoBehaviour
             for (int j = 0; j < batchSize; j++)
             {
                 int imgIndex = (int)(rnd.NextDouble() * sample);
-                double[] targets = new double[10];
+                double[] targets = new double[10] { 0,0,0,0,0,0,0,0,0,0};
+                //Debug.Log(targets);
                 int number = GetNumber(imgIndex, files);
                 targets[number] = 1;
                 double[] outputs = nn.FeedForward(GetImage(imgIndex, files));
@@ -75,9 +108,23 @@ public class MainScript : MonoBehaviour
 
     public void TeachNN(double[] inputs)
     {
+       
         double[] outputs = nn.FeedForward(inputs);
-        Debug.Log($"{Math.Round(outputs[0], 2)} {Math.Round(outputs[1], 2)} {Math.Round(outputs[2], 2)} {Math.Round(outputs[3], 2)} {Math.Round(outputs[4], 2)} {Math.Round(outputs[5], 2)} {Math.Round(outputs[6], 2)} {Math.Round(outputs[7], 2)} {Math.Round(outputs[8], 2)} {Math.Round(outputs[9], 2)}");
+        //Debug.Log($"{Math.Round(outputs[0], 2)} {Math.Round(outputs[1], 2)} {Math.Round(outputs[2], 2)} {Math.Round(outputs[3], 2)} {Math.Round(outputs[4], 2)} {Math.Round(outputs[5], 2)} {Math.Round(outputs[6], 2)} {Math.Round(outputs[7], 2)} {Math.Round(outputs[8], 2)} {Math.Round(outputs[9], 2)}");
         int num = WhichNumber(outputs);
+        numbersWeight.text = string.Join("  ", 
+         Math.Round(outputs[0], 2), 
+         Math.Round(outputs[1], 2),
+         Math.Round(outputs[2], 2),
+         Math.Round(outputs[3], 2),
+         Math.Round(outputs[4], 2)) + "\n\n" + 
+         string.Join("  ", 
+         Math.Round(outputs[5], 2),
+         Math.Round(outputs[6], 2),
+         Math.Round(outputs[7], 2),
+         Math.Round(outputs[8], 2),
+         Math.Round(outputs[9], 2));
+        number.text = string.Join("", num); 
         Debug.Log(num);
     }
 
@@ -113,8 +160,8 @@ public class MainScript : MonoBehaviour
         {
             for (int j = 0; j < btm.Height; j++)
             {
-                clr = btm.GetPixel(i, j);
-                inputs[i + j * 28] = (clr.ToArgb() & 0xff) / 255.0f;
+                clr = btm.GetPixel(j, i);
+                inputs[j + i * 28] = (clr.ToArgb() & 0xff) / 255.0f; 
             }
         }
         //Print(inputs);
